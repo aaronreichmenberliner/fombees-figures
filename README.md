@@ -131,10 +131,16 @@ scenario.
 
 ## Licence
 
-The code in `scripts/` is MIT licensed; see `LICENSE`.
+Two licences, because the repository holds two different kinds of thing.
 
-`data/` and `figures/` are research outputs rather than software. If you reuse
-them, cite the paper.
+| | licence | file |
+|---|---|---|
+| `scripts/` | MIT | `LICENSE` |
+| `data/`, `figures/` | CC BY 4.0 | `LICENSE-DATA` |
+
+Reuse the code freely. Reuse the workbook or the figures freely too, including
+commercially, but credit the paper and say if you changed them. The citation to
+use is in `LICENSE-DATA`.
 
 ## Figures
 

@@ -1,0 +1,33 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+SPDX-License-Identifier: CC-BY-4.0
+
+This licence covers the research outputs in this repository:
+
+    data/       the Supplementary Information workbook
+    figures/    the rendered figures (PDF and PNG)
+
+The software in scripts/ is covered separately by the MIT Licence; see LICENSE.
+
+You are free to share and adapt these materials for any purpose, including
+commercially, provided you give appropriate credit, link to this licence, and
+indicate if changes were made.
+
+Attribution should cite the paper:
+
+    Taylor, S. I., Haddad, K. R., Berliner, A. J., Nandi, S. & McDonald, K. A.
+    Figures of Merit and Equivalent System Mass for Space-Based Production of
+    a Therapeutic in Plants.
+
+    [journal, volume, pages, year, DOI to be completed on publication]
+
+The authoritative legal text of CC BY 4.0 is published at:
+
+    https://creativecommons.org/licenses/by/4.0/legalcode
+
+and a plain-language summary at:
+
+    https://creativecommons.org/licenses/by/4.0/
+
+That published text governs; this file identifies the licence and states how
+to attribute, but does not reproduce or modify it.
