@@ -129,6 +129,13 @@ reconcile arithmetically. Both are deliberate and both are stated in the paper:
 `check_conventions.py` asserts both, and prints the unpriced waste volume per
 scenario.
 
+## Licence
+
+The code in `scripts/` is MIT licensed; see `LICENSE`.
+
+`data/` and `figures/` are research outputs rather than software. If you reuse
+them, cite the paper.
+
 ## Figures
 
 | | |

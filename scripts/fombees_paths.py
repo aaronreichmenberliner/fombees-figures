@@ -6,8 +6,7 @@ from the analysis directory, the repo root, or a flat redistribution bundle.
 """
 from pathlib import Path
 
-WORKBOOK_NAME = "FOMBEES Supplemental Information FINAL.xlsx"
-MANUSCRIPT_NAME = "FOMBEES Manuscript Draft 9.docx"
+WORKBOOK_NAME = "FOMBEES_supplementary_information.xlsx"
 
 
 def _root() -> Path:
@@ -35,10 +34,6 @@ def workbook() -> Path:
     return _find(WORKBOOK_NAME)
 
 
-def manuscript() -> Path:
-    return _find(MANUSCRIPT_NAME)
-
-
 def figures_dir() -> Path:
     d = ROOT / "figures"
     d.mkdir(exist_ok=True)
@@ -48,5 +43,4 @@ def figures_dir() -> Path:
 if __name__ == "__main__":
     print("root:      ", ROOT)
     print("workbook:  ", workbook())
-    print("manuscript:", manuscript())
     print("figures:   ", figures_dir())
