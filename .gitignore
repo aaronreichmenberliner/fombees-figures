@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Derived, and regenerated on demand. Stamped with a hash of the workbook it
+# came from, so a stale copy is rejected rather than silently trusted.
+data/sensitivity.json

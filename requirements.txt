@@ -1,0 +1,8 @@
+# Pinned to the versions the published figures were rendered with.
+matplotlib==3.11.2
+openpyxl==3.1.5
+numpy==2.5.3
+pypdf==6.19.0
+# Only needed for the sensitivity analysis in Figure 6, which recomputes the
+# workbook rather than approximating it. The other four figures do not use it.
+formulas==1.3.4
