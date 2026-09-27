@@ -6,3 +6,8 @@ venv/
 # Derived, and regenerated on demand. Stamped with a hash of the workbook it
 # came from, so a stale copy is rejected rather than silently trusted.
 data/sensitivity.json
+
+# Written alongside each figure at render time and read back by verify_plots,
+# which uses them to tell an axis tick from a data label. Build artefacts, not
+# source; regenerated whenever a figure is rendered.
+figures/*.ticks.json
