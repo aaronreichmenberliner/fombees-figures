@@ -26,13 +26,15 @@ DOSE_CELL = "B8"          # Assumptions!B8, 'Base case dose'
 CREW_CELL = "B5"          # Assumptions!B5, 'Crew size' - NOT the dose
 
 # scenario -> (cell taking the dose, cell taking the expression level)
+# The duplicate dose row was deleted upstream, so the titer moved from B7 to
+# B6 on every plant sheet.
 LINKS = {
     "FLOWN":              ("B13", None),
-    "TRANSGENIC-LETTUCE": ("B5", "B7"),
-    "TRANSGENIC-TOBACCO": ("B5", "B7"),
-    "GENE GUN":           ("B5", "B7"),
-    "AGRO":               ("B5", "B7"),
-    "VIRAL":              ("B5", "B7"),
+    "TRANSGENIC-LETTUCE": ("B5", "B6"),
+    "TRANSGENIC-TOBACCO": ("B5", "B6"),
+    "GENE GUN":           ("B5", "B6"),
+    "AGRO":               ("B5", "B6"),
+    "VIRAL":              ("B5", "B6"),
 }
 
 

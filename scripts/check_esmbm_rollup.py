@@ -40,11 +40,26 @@ ROLLUP = {
 # term, so the parts silently failed to add up to the whole and anyone checking
 # the sheet by hand got the pre-correction number. Asserted positively now
 # rather than catalogued as known-bad.
-PARTS = {
-    "GENE GUN": (["B80", "B197"], "B208"),
-    "AGRO":     (["B74", "B278"], "B289"),
-    "VIRAL":    (["B74", "B170"], "B181"),
+# Part and total rows, located by their labels for the same reason as above.
+PART_LABELS = {
+    "GENE GUN": (["Plant Growth ESMBM (kgeq)",
+                  "Total Gene Gun Components ESM (kgeq)"],
+                 "Total Overall ESM (kgeq)"),
+    "AGRO": (["Total Plant Growth ESMBM (kgeq)",
+              "Total AGRO Components ESMBM (kgeq)"],
+             "Total Overall ESMBM (kgeq)"),
+    "VIRAL": (["Total Plant Growth ESMBM (kgeq)",
+               "Total VIRAL ESMBM (kgeq)"],
+              "Total Overall ESMBM (kgeq)"),
 }
+
+
+def _cell(sheet, label):
+    for r in range(1, sheet.max_row + 1):
+        a = sheet.cell(r, 1).value
+        if isinstance(a, str) and a.strip() == label:
+            return f"B{r}"
+    raise LookupError(f"{sheet.title}: no row labelled {label!r}")
 
 TOL = 0.01
 
@@ -73,8 +88,10 @@ def run() -> list[str]:
         if not ok:
             bad.append(f"{scen}: gap {gap:,.2f}, expected {expected_gap:,.2f}")
     print("  parts sum to the whole:")
-    for scen, (part_cells, total_cell) in PARTS.items():
+    for scen, (part_labels, total_label) in PART_LABELS.items():
         sheet = V[scen]
+        part_cells = [_cell(sheet, l) for l in part_labels]
+        total_cell = _cell(sheet, total_label)
         parts = [sheet[c].value for c in part_cells]
         total = sheet[total_cell].value
         if any(p is None for p in parts) or total is None:

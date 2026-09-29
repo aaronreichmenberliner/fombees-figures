@@ -56,6 +56,35 @@ def blocks(sheet_v) -> list[dict]:
     return out
 
 
+# Which roll-up row is a scenario's authoritative total. Matched on the label
+# rather than a fixed address: deleting a row shifts every cell below it, and
+# hardcoded addresses silently start reading the wrong thing.
+TOTAL_LABEL = {
+    "FLOWN": "ESMBM (kgeq)",
+    "TRANSGENIC-LETTUCE": "ESMBM (kgeq)",
+    "TRANSGENIC-TOBACCO": "ESMBM (kgeq)",
+    "GENE GUN": "Total Overall ESM (kgeq)",
+    "AGRO": "Total Overall ESMBM (kgeq)",
+    "VIRAL": "Total Overall ESMBM (kgeq)",
+}
+
+
+def total_cells() -> dict[str, tuple[str, str]]:
+    """scenario -> (sheet, cell) holding its own ESM_BM total, found by label."""
+    V = openpyxl.load_workbook(workbook(), data_only=True)
+    out = {}
+    for scen, label in TOTAL_LABEL.items():
+        sheet = V[scen]
+        for r in range(1, sheet.max_row + 1):
+            a = sheet.cell(r, 1).value
+            if isinstance(a, str) and a.strip() == label:
+                out[scen] = (scen, f"B{r}")
+                break
+        else:
+            raise LookupError(f"{scen}: no row labelled {label!r}")
+    return out
+
+
 def read() -> dict[str, dict[str, float]]:
     V = openpyxl.load_workbook(workbook(), data_only=True)
     res = {}

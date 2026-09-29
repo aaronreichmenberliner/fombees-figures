@@ -13,7 +13,7 @@ being true.
 ```bash
 make setup          # creates .venv and installs pinned dependencies
 source .venv/bin/activate
-make figures        # renders Figures 2-6 into figures/
+make figures        # renders Figures 1-6 into figures/
 make check          # regenerates, then runs all ten checks
 ```
 
@@ -22,16 +22,18 @@ Or without `make`:
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cd scripts && python fig2.py fig3.py ...   # or: python verify_all.py
+cd scripts && python fig1_label.py && python fig2.py ...   # or: python verify_all.py
 ```
 
 Python 3.11 or newer. Figure 6 needs the `formulas` package because it
-recomputes the workbook; the other four figures do not.
+recomputes the workbook; the other figures do not. Figure 1 needs `pypdf` and
+`pymupdf`, since it labels a supplied PDF rather than plotting anything.
 
 ## What is here
 
 ```
-data/      the Supplementary Information workbook, unmodified
+data/      the Supplementary Information workbook, unmodified, and the
+           co-authors' Figure 1 artwork before labelling
 scripts/   the pipeline and its checks
 figures/   rendered output: vector PDF plus 600 dpi PNG
 ```
@@ -60,6 +62,14 @@ not spell those categories identically, and matching only the canonical
 spelling once dropped 124 kg_eq of FLOWN waste through five published figures.
 
 **`load.py`** aggregates components into the shapes the figures need.
+
+**`fig1_label.py`** is the exception to everything above. Figure 1 is block-flow
+artwork drawn by the co-authors, not a plot of the model, so it is not redrawn.
+The script adds the a–f panel labels as a vector overlay and crops the page;
+the six embedded images are left byte-identical to the source, so nothing is
+resampled. Panel positions are read from the PDF's own content stream, and
+the overlay is checked to be the same size as the page before merging, since
+a mis-sized overlay merges without error and puts every label in the wrong place.
 
 **`sensitivity.py`** derives Figure 6 by recomputing the workbook with one
 input perturbed, not by an analytic approximation. Plant and equipment counts
@@ -146,10 +156,11 @@ use is in `LICENSE-DATA`.
 
 | | |
 |---|---|
+| **1** | block flow of the six production scenarios (co-authors' artwork, labelled here) |
 | **2** | figures of merit by resource group, 24 panels |
 | **3** | net figures of merit across all six scenarios |
 | **4** | batch-manufacturing equivalent system mass, ESM_BM |
 | **5** | useful-output recovery, and rank under each single resource |
-| **6** | sensitivity to the crew-time factor, expression level and mission length |
+| **6** | sensitivity to the crew-time factor, expression level, weekly dose and number of batches |
 
 Captions are in the manuscript, not here.

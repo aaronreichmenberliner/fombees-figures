@@ -1,171 +1,163 @@
 """Figure 6 - what drives the resource cost, and how sensitive it is.
 
-Every curve here is produced by recomputing the workbook with one input
-perturbed (see sensitivity.py), not by an analytic approximation. That matters:
-plant counts pass through ROUNDUP and equipment counts through CEILING, so the
-real response is step-wise, and the flat segments are a genuine feature of the
-model rather than an artefact.
-
 (a) net ESMBM against the crew-time equivalency factor
-(b) net ESMBM against expression level
-(c) net ESMBM against the number of weekly batches flown
+(b) net ESMBM against PTH-Fc expression level
+(c) net ESMBM against the weekly dose
+(d) net ESMBM against the number of weekly batches flown
 
-Panel c was previously the crew-time feasibility chart and previously lived in
-Figure 7. It was moved here at the co-author's request so that Figure 6 is
-entirely sensitivity analysis.
+Every curve is produced by recomputing the workbook with one input perturbed
+(see sensitivity.py), not by an analytic approximation. That matters more than
+it sounds. An earlier version of the batch panel modelled each scenario as
+system cost paid once plus process cost paid per batch. For four scenarios that
+is exactly right; for GENE GUN it is badly wrong, because its equipment counts
+step with batch number, and it overstated GENE GUN by 95% at 20 batches. The
+visible steps in these curves are real, and no smooth formula reproduces them.
 """
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
-import numpy as np
+from matplotlib.lines import Line2D
 
 import fombees_palette as pal
-from fig_style import (MM, ESMBM, KGEQ, SUBSCRIPT_PT, panel_label,
-                       plain_log, save, stagger_labels)
-from load import totals
+from fig_style import (MM, ESMBM, KGEQ, SUBSCRIPT_PT, panel_label, plain_log,
+                       save, stagger_labels)
 from read_esmbm import read
 from sensitivity import load as load_sens
 
 pal.check()
 
 TEQ_USED = 0.94          # Assumptions!H13
-BATCHES = 86             # Assumptions!B7
+DOSE_USED = 5.0          # Assumptions!B8
+BATCHES_USED = 86        # Assumptions!B7
 SHORT = {"TRANSGENIC-LETTUCE": "T-LETTUCE", "TRANSGENIC-TOBACCO": "T-TOBACCO"}
 
-
-tot, r, sens = totals(), read(), load_sens()
+r, sens = read(), load_sens()
 ORDER = sorted(r, key=lambda s: r[s]["ESM_BM"])
+YLAB = f"Net {ESMBM} ({KGEQ} per CM)"
 
 
 def style(s: str) -> dict:
     return {"color": pal.SCENARIO[s], "ls": pal.linestyle(s), "lw": 0.9}
 
 
-fig = plt.figure(figsize=(183 * MM, 62 * MM))
-gs = fig.add_gridspec(1, 3, wspace=0.60, left=0.066, right=0.925,
-                      top=0.90, bottom=0.30)
-
-# ---- (a) crew-time equivalency
-ax = fig.add_subplot(gs[0, 0])
-xs = sens["teq"]["values"]
-for s in ORDER:
-    ax.plot(xs, sens["teq"]["curves"][s], **style(s))
-ax.axvline(TEQ_USED, color="black", lw=0.5, ls=pal.DOTTED)
-ax.annotate(f"in use {TEQ_USED}", (TEQ_USED, 1.005), xycoords=("data", "axes fraction"),
-            fontsize=5.0, ha="center", va="bottom")
-ax.set_yscale("log")
-plain_log(ax, "y")
-ax.set_xlabel(f"crew-time equivalency factor\n({KGEQ} per CM-h)",
-              fontsize=SUBSCRIPT_PT)
-ax.set_ylabel(f"Net {ESMBM} ({KGEQ} per CM)", fontsize=SUBSCRIPT_PT)
-ax.set_xlim(0, 4)
-ax.tick_params(labelsize=5)
-# labelled after the scale is set: FLOWN and VIRAL converge at the right edge
-stagger_labels(ax, [(sens["teq"]["curves"][s][-1], SHORT.get(s, s),
-                     pal.SCENARIO[s]) for s in ORDER], x=4.0, fontsize=5.0)
-panel_label(fig, ax, "a", dx=0.062, dy=0.014)
-
-# ---- (b) expression level
-ax = fig.add_subplot(gs[0, 1])
-mult = sens["expression"]["multipliers"]
-flat = []
-for s, curve in sens["expression"]["curves"].items():
-    base_titer = sens["base_expression"][s]
-    ax.plot([base_titer * m for m in mult], curve, **style(s))
-    ax.plot([base_titer], [r[s]["ESM_BM"]], "o", color=pal.SCENARIO[s],
-            markersize=2.4)
-    if max(curve) - min(curve) < 1e-6:
-        flat.append(s)
-ax.axhline(r["FLOWN"]["ESM_BM"], color=pal.SCENARIO["FLOWN"], lw=0.6,
-           ls=pal.DASHED)
-ax.set_xscale("log")
-ax.set_yscale("log")
-plain_log(ax, "x")
-plain_log(ax, "y")
-ax.set_xlabel("PTH-Fc expression level\n(mg per kg FW)",
-              fontsize=SUBSCRIPT_PT)
-ax.set_ylabel(f"Net {ESMBM} ({KGEQ} per CM)", fontsize=SUBSCRIPT_PT)
-ax.tick_params(labelsize=5)
-for s, c in sens["expression"]["curves"].items():
-    end_x = sens["base_expression"][s] * mult[-1]
-    ax.annotate(SHORT.get(s, s), (end_x, c[-1]), fontsize=5.0,
-                color=pal.SCENARIO[s], ha="left", va="center",
-                xytext=(2.5, 0), textcoords="offset points",
-                annotation_clip=False)
-# B3 again: placed after the scale is set, in axes-fraction x so it cannot be
-# pushed outside the view
-ax.annotate("FLOWN", (0.01, r["FLOWN"]["ESM_BM"]),
-            xycoords=("axes fraction", "data"), fontsize=5.0,
-            color=pal.SCENARIO["FLOWN"], ha="left", va="bottom")
-panel_label(fig, ax, "b", dx=0.085, dy=0.014)
-
-# ---- (c) mission length
-# System cost is paid once and process cost is paid per batch, so the ordering
-# depends on how many batches are flown.
-ax = fig.add_subplot(gs[0, 2])
-nb = np.arange(4, 173)
+def crossings(xs, curves, ref="FLOWN"):
+    """Where each scenario crosses the reference, by linear interpolation."""
+    out = []
+    for s, c in curves.items():
+        if s == ref:
+            continue
+        f = curves[ref]
+        for i in range(len(xs) - 1):
+            a, b = c[i] - f[i], c[i + 1] - f[i + 1]
+            if a * b < 0:
+                out.append((s, xs[i] + (xs[i + 1] - xs[i])
+                            * abs(a) / (abs(a) + abs(b))))
+    return out
 
 
-def once(s):
-    return r[s]["System"]
+fig = plt.figure(figsize=(183 * MM, 126 * MM))
+gs = fig.add_gridspec(2, 2, hspace=0.58, wspace=0.34,
+                      left=0.085, right=0.885, top=0.970, bottom=0.145)
 
+PANELS = [
+    ("a", "teq", f"crew-time equivalency factor\n({KGEQ} per CM-h)",
+     False, TEQ_USED),
+    ("b", "expression", "PTH-Fc expression level\n(mg per kg FW)",
+     True, None),
+    ("c", "dose", "weekly dose (mg PTH-Fc per CM)", True, DOSE_USED),
+    ("d", "batches", "number of weekly batches", False, BATCHES_USED),
+]
 
-def per_batch(s):
-    return (r[s]["Process Operations"] + r[s]["Process Inputs"]
-            + r[s]["Waste process outputs"]
-            - r[s]["Useful process outputs"]) / BATCHES
+found = {}
+for i, (letter, key, xlabel, logx, marker) in enumerate(PANELS):
+    ax = fig.add_subplot(gs[i // 2, i % 2])
 
+    if key == "expression":
+        # each scenario is swept over its own titer range, so the curves span
+        # different x-domains and each label belongs at its own curve's end
+        for s, c in sens["expression"]["curves"].items():
+            xs = [sens["base_expression"][s] * m
+                  for m in sens["expression"]["multipliers"]]
+            ax.plot(xs, c, **style(s))
+            ax.plot([sens["base_expression"][s]], [r[s]["ESM_BM"]], "o",
+                    color=pal.SCENARIO[s], markersize=2.4)
+            ax.annotate(SHORT.get(s, s), (xs[-1], c[-1]), fontsize=5.0,
+                        color=pal.SCENARIO[s], ha="left", va="center",
+                        xytext=(2.5, 0), textcoords="offset points",
+                        annotation_clip=False)
+        ax.axhline(r["FLOWN"]["ESM_BM"], color=pal.SCENARIO["FLOWN"], lw=0.6,
+                   ls=pal.DASHED)
+        ax.set_xscale("log")
+    else:
+        xs = sens[key]["values"]
+        curves = sens[key]["curves"]
+        for s in ORDER:
+            ax.plot(xs, curves[s], **style(s))
+        if marker is not None:
+            ax.axvline(marker, color="black", lw=0.5, ls=pal.DOTTED)
+        if logx:
+            ax.set_xscale("log")
+        found[key] = crossings(xs, curves)
+        for s, x in found[key]:
+            y = curves[s][0]
+            for j in range(len(xs) - 1):
+                if xs[j] <= x <= xs[j + 1]:
+                    t = (x - xs[j]) / (xs[j + 1] - xs[j])
+                    y = curves[s][j] + t * (curves[s][j + 1] - curves[s][j])
+            ax.plot([x], [y], "o", markerfacecolor="white",
+                    markeredgecolor=pal.SCENARIO[s], markeredgewidth=0.9,
+                    markersize=3.4)
 
-cross = []
-for s in ORDER:
-    ax.plot(nb, once(s) + per_batch(s) * nb, **style(s))
-for s in ORDER:
-    if s == "FLOWN":
-        continue
-    d0 = (once(s) - once("FLOWN")) + (per_batch(s) - per_batch("FLOWN")) * nb[0]
-    d1 = (once(s) - once("FLOWN")) + (per_batch(s) - per_batch("FLOWN")) * nb[-1]
-    if d0 * d1 < 0:
-        x = nb[0] + (nb[-1] - nb[0]) * abs(d0) / (abs(d0) + abs(d1))
-        cross.append((s, x))
-        y = once(s) + per_batch(s) * x
-        ax.plot([x], [y], "o", markerfacecolor="white",
-                markeredgecolor=pal.SCENARIO[s], markeredgewidth=0.9,
-                markersize=3.4)
-        ax.annotate(f"{x:.0f}", (x, y), fontsize=5.0, color=pal.SCENARIO[s],
-                    ha="right", va="top", xytext=(-2.5, -1.5),
-                    textcoords="offset points")
-ax.axvline(BATCHES, color="black", lw=0.5, ls=pal.DOTTED)
-ax.set_yscale("log")
-plain_log(ax, "y")
-ax.annotate(f"{BATCHES} batches", (BATCHES, 1.005),
-            xycoords=("data", "axes fraction"), fontsize=5.0, ha="center",
-            va="bottom")
-ax.set_xlabel("number of weekly batches", fontsize=SUBSCRIPT_PT)
-ax.set_ylabel(f"Net {ESMBM} ({KGEQ} per CM)", fontsize=SUBSCRIPT_PT)
-ax.set_xlim(4, 172)
-ax.tick_params(labelsize=5)
-stagger_labels(ax, [(once(s) + per_batch(s) * nb[-1], SHORT.get(s, s),
-                     pal.SCENARIO[s]) for s in ORDER], x=nb[-1], fontsize=5.0)
-panel_label(fig, ax, "c", dx=0.085, dy=0.014)
+    ax.set_yscale("log")
+    plain_log(ax, "y")
+    if logx:
+        plain_log(ax, "x")
+    ax.set_xlabel(xlabel, fontsize=SUBSCRIPT_PT)
+    ax.set_ylabel(YLAB, fontsize=SUBSCRIPT_PT)
+    ax.tick_params(labelsize=5)
+
+    if key != "expression":
+        xs = sens[key]["values"]
+        stagger_labels(ax, [(sens[key]["curves"][s][-1], SHORT.get(s, s),
+                             pal.SCENARIO[s]) for s in ORDER],
+                       x=xs[-1], fontsize=5.0)
+    if marker is not None and key != "expression":
+        lab = {"teq": f"in use {TEQ_USED}", "dose": f"{DOSE_USED:g} mg",
+               "batches": f"{BATCHES_USED} batches"}[key]
+        ax.annotate(lab, (marker, 1.005), xycoords=("data", "axes fraction"),
+                    fontsize=5.0, ha="center", va="bottom")
+    panel_label(fig, ax, letter, dx=0.070, dy=0.014)
+
+# A key, because the figure carries four distinct marks and nothing named any
+# of them. Note the base case appears two ways and has to: in a, c and d every
+# scenario shares one value so it is a rule, whereas in b each scenario has its
+# own titer so it has to be a point per curve.
+key = [
+    (Line2D([0], [0], color=pal.SCENARIO["FLOWN"], lw=0.9, ls=pal.DASHED),
+     "FLOWN, the reference"),
+    (Line2D([0], [0], color="black", lw=0.5, ls=pal.DOTTED),
+     "value used in this study (a, c, d)"),
+    (Line2D([0], [0], color=pal.SCENARIO["VIRAL"], lw=0, marker="o",
+            markersize=3.4), "base case for that scenario (b)"),
+    (Line2D([0], [0], color=pal.SCENARIO["VIRAL"], lw=0, marker="o",
+            markersize=3.4, markerfacecolor="white", markeredgewidth=0.9),
+     "crosses the FLOWN reference"),
+]
+fig.legend([h for h, _ in key], [l for _, l in key], loc="lower center",
+           ncol=4, fontsize=5.4, frameon=False, bbox_to_anchor=(0.5, 0.030),
+           handlelength=1.8, columnspacing=1.8, handletextpad=0.6)
+fig.text(0.5, 0.008,
+         "Curve colour identifies the scenario and is the same in every panel; "
+         "each curve is labelled directly at its right-hand end.",
+         ha="center", fontsize=5.2)
 
 save(fig, "Figure6_drivers")
-
-teq_curve = sens["teq"]["curves"]
-print("  crossings of the FLOWN baseline as the crew-time factor rises:")
-for s in ORDER:
-    if s == "FLOWN":
-        continue
-    c, f = teq_curve[s], teq_curve["FLOWN"]
-    for i in range(len(xs) - 1):
-        if (c[i] - f[i]) * (c[i + 1] - f[i + 1]) < 0:
-            x = xs[i] + (xs[i + 1] - xs[i]) * abs(c[i] - f[i]) / (
-                abs(c[i] - f[i]) + abs(c[i + 1] - f[i + 1]))
-            print(f"    {SHORT.get(s, s):<12} crosses at T_eq = {x:.2f}")
-if flat:
-    print(f"  NOTE: {', '.join(flat)} does not respond to expression level at "
-          f"all - its titer is hard-coded on the sheet rather than read from "
-          f"the Assumptions tab")
-print(f"\n  batch-count crossings of the FLOWN reference in 4-172: "
-      f"{len(cross)}")
-for s, x in cross:
-    print(f"    {SHORT.get(s, s):<12} crosses at {x:.1f} batches")
+for key, label in (("teq", "crew-time equivalency factor"),
+                   ("dose", "weekly dose (mg)"),
+                   ("batches", "weekly batches")):
+    if found.get(key):
+        print(f"  crossings of the FLOWN reference against {label}:")
+        for s, x in found[key]:
+            print(f"    {SHORT.get(s, s):<12} at {x:,.1f}")
+    else:
+        print(f"  no crossing of the FLOWN reference against {label}")

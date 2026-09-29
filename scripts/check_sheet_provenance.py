@@ -22,18 +22,14 @@ import sys
 import openpyxl
 
 from fombees_paths import figures_dir, workbook
-from read_esmbm import read
+from read_esmbm import read, total_cells
 from sensitivity import CACHE, workbook_hash
 
-# the cell on each sheet holding that scenario's own ESM_BM total
-TOTAL_CELL = {
-    "FLOWN": ("FLOWN", "B56"),
-    "TRANSGENIC-LETTUCE": ("TRANSGENIC-LETTUCE", "B80"),
-    "TRANSGENIC-TOBACCO": ("TRANSGENIC-TOBACCO", "B74"),
-    "GENE GUN": ("GENE GUN", "B208"),
-    "AGRO": ("AGRO", "B289"),
-    "VIRAL": ("VIRAL", "B181"),
-}
+# The cell on each sheet holding that scenario's own ESM_BM total, found by
+# label rather than by a fixed address. Deleting a row upstream shifts every
+# cell below it, and a stale address then reads a neighbouring cell without
+# raising anything.
+TOTAL_CELL = total_cells()
 TOL = 0.01
 
 

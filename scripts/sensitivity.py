@@ -25,17 +25,14 @@ import json
 import re
 
 from fombees_paths import ROOT, workbook
+from read_esmbm import total_cells as _total_cells
 
 CACHE = ROOT / "data" / "sensitivity.json"
 
-SCEN_TOTAL = {                     # sheet -> cell holding that scenario's ESM_BM
-    "FLOWN": "B56",
-    "TRANSGENIC-LETTUCE": "B80",
-    "TRANSGENIC-TOBACCO": "B74",
-    "GENE GUN": "B208",
-    "AGRO": "B289",
-    "VIRAL": "B181",
-}
+# Resolved by label at run time rather than hardcoded: a row deletion upstream
+# shifts every address below it, and a stale address reads a neighbouring cell
+# without complaining.
+SCEN_TOTAL = {s: c for s, (_sh, c) in _total_cells().items()}
 EXPRESSION_CELL = {                # Assumptions cell holding each titer
     "TRANSGENIC-LETTUCE": "C17",
     "TRANSGENIC-TOBACCO": "C18",
@@ -44,17 +41,33 @@ EXPRESSION_CELL = {                # Assumptions cell holding each titer
     "VIRAL": "C21",
 }
 TEQ_CELL = "H13"
+DOSE_CELL = "B8"          # Assumptions!B8, mg PTH-Fc per CM per week
+WEEKS_CELL = "B7"         # Assumptions!B7, weekly batches over the mission
 MULTIPLIERS = [0.1, 0.15, 0.25, 0.4, 0.6, 0.8, 1.0, 1.5, 2.5, 4.0, 6.0, 10.0]
 TEQ_VALUES = [0.0, 0.25, 0.5, 0.75, 0.94, 1.25, 1.75, 2.25, 2.75, 3.39, 4.0]
+# Table 1 tabulates 0.05, 0.5, 5 and 50 mg; the sweep spans that range and a
+# little beyond, logarithmically, since the scenarios differ by decades.
+DOSE_VALUES = [0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0]
+BATCH_VALUES = [4, 12, 20, 32, 44, 60, 86, 110, 130, 156, 172]
+
+# NOTE: mission duration now propagates from Assumptions!B7 in the workbook
+# itself (fixed upstream by S. Taylor, verified by recomputation at six batch
+# counts). The in-memory repairs that used to live here are gone.
 
 
 def workbook_hash() -> str:
+    """Identity of the workbook a cache was derived from.
+
+    Content, not modification time: a cache copied into a new working
+    directory is newer than the workbook while still holding the previous
+    one's numbers, and a timestamp test passes in exactly that situation.
+    """
     return hashlib.sha256(workbook().read_bytes()).hexdigest()[:16]
 
 
-def _model():
+def _model(path=None):
     import formulas
-    return formulas.ExcelModel().loads(str(workbook())).finish()
+    return formulas.ExcelModel().loads(str(path or workbook())).finish()
 
 
 def _key(sol, sheet: str, cell: str) -> str:
@@ -85,6 +98,8 @@ def derive() -> dict:
         "base_expression": base_expr,
         "expression": {"multipliers": MULTIPLIERS, "curves": {}},
         "teq": {"values": TEQ_VALUES, "curves": {}},
+        "dose": {"values": DOSE_VALUES, "curves": {}},
+        "batches": {"values": BATCH_VALUES, "curves": {}},
     }
 
     # one recompute per multiplier: the five titers feed five different sheets,
@@ -99,11 +114,29 @@ def derive() -> dict:
               + "  ".join(f"{s[:9]} {_val(sol, tgt[s]):>9,.0f}"
                           for s in EXPRESSION_CELL))
 
+    for v in DOSE_VALUES:
+        sol = xl.calculate(inputs={_key(base, "ASSUMPTIONS", DOSE_CELL): v})
+        for s in SCEN_TOTAL:
+            out["dose"]["curves"].setdefault(s, []).append(_val(sol, tgt[s]))
+        print(f"    dose {v:<6} "
+              + "  ".join(f"{s[:7]} {_val(sol, tgt[s]):>9,.0f}"
+                          for s in SCEN_TOTAL))
+
     for t in TEQ_VALUES:
         sol = xl.calculate(inputs={teq_in: t})
         for s in SCEN_TOTAL:
             out["teq"]["curves"].setdefault(s, []).append(_val(sol, tgt[s]))
         print(f"    T_eq {t:<5} "
+              + "  ".join(f"{s[:7]} {_val(sol, tgt[s]):>9,.0f}"
+                          for s in SCEN_TOTAL))
+
+    weeks_in = _key(base, "ASSUMPTIONS", WEEKS_CELL)
+    for n in BATCH_VALUES:
+        sol = xl.calculate(inputs={weeks_in: n})
+        for s in SCEN_TOTAL:
+            out["batches"]["curves"].setdefault(s, []).append(
+                _val(sol, tgt[s]))
+        print(f"    batches {n:<4} "
               + "  ".join(f"{s[:7]} {_val(sol, tgt[s]):>9,.0f}"
                           for s in SCEN_TOTAL))
     return out

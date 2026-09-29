@@ -129,8 +129,8 @@ for row, metric in enumerate(COMPOSE):
     letter(axc, 0.105)
     axn = fig.add_subplot(gs[row, 1])
     netplot(axn, {s: tot[(s, metric, "Net")] for s in ORDER},
-            "Net " + METRIC_LABEL[metric])
-    letter(axn, 0.028)
+            "Net " + METRIC_LABEL[metric], labels=True)
+    letter(axn, 0.105)
 
 for col, metric in enumerate(["power", "crew_time"]):
     ax = fig.add_subplot(gs[2, col])

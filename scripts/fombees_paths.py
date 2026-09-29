@@ -1,12 +1,13 @@
 """Locate the repo's inputs and outputs.
 
-The repo root is the directory holding the draft 8 workbook and manuscript.
+The repo root is the directory holding the Supplementary Information workbook.
 Resolved by walking up from this file so the scripts work whether they are run
 from the analysis directory, the repo root, or a flat redistribution bundle.
 """
 from pathlib import Path
 
 WORKBOOK_NAME = "FOMBEES_supplementary_information.xlsx"
+FIGURE1_SOURCE_NAME = "Figure1_source.pdf"
 
 
 def _root() -> Path:
@@ -32,6 +33,11 @@ def _find(name: str) -> Path:
 
 def workbook() -> Path:
     return _find(WORKBOOK_NAME)
+
+
+def figure1_source() -> Path:
+    """The co-authors' Figure 1 artwork, before panel labels are added."""
+    return _find(FIGURE1_SOURCE_NAME)
 
 
 def figures_dir() -> Path:

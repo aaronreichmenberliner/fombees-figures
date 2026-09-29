@@ -28,7 +28,20 @@ from load import by_group, totals
 from read_esmbm import read
 
 VEQ, WSEQ = 79.3, 0.93
-WASTE_ROW = {"FLOWN": 54, "TRANSGENIC-LETTUCE": 78, "TRANSGENIC-TOBACCO": 72}
+# Located by label: the plant sheets shifted up a row when the duplicate dose
+# row was deleted, and a fixed row number then reads its neighbour in silence.
+WASTE_LABELS = ("Waste outputs", "Waste process outputs")
+
+
+def _waste_row(sheet) -> int:
+    for r in range(1, sheet.max_row + 1):
+        a = sheet.cell(r, 1).value
+        if isinstance(a, str) and a.strip() in WASTE_LABELS:
+            return r
+    raise LookupError(f"{sheet.title}: no waste category row")
+
+
+WASTE_SHEETS = ["FLOWN", "TRANSGENIC-LETTUCE", "TRANSGENIC-TOBACCO"]
 TOL = 0.01
 
 
@@ -38,7 +51,8 @@ def run() -> list[str]:
     bad = []
 
     print("  convention 2 - waste priced on mass alone, at WS_eq:")
-    for s, row in WASTE_ROW.items():
+    for s in WASTE_SHEETS:
+        row = _waste_row(V[s])
         mass = tot.get((s, "mass", "Waste"), 0.0)
         want, got = mass * WSEQ, V[s].cell(row, 2).value
         ok = abs(want - got) < TOL

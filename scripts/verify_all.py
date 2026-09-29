@@ -12,7 +12,8 @@ from pathlib import Path
 PY = sys.executable
 HERE = Path(__file__).resolve().parent
 
-FIGURES = ["fig2.py", "fig3.py", "fig4.py", "fig5.py", "fig6.py"]
+FIGURES = ["fig1_label.py", "fig2.py", "fig3.py", "fig4.py",
+           "fig5.py", "fig6.py"]
 
 CHECKS = [
     ("figures trace to the current workbook", "check_sheet_provenance.py"),

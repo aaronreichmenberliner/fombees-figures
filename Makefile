@@ -8,7 +8,7 @@ setup:
 	@echo "activate with: source .venv/bin/activate"
 
 figures:
-	cd scripts && $(PY) fig2.py && $(PY) fig3.py && $(PY) fig4.py \
+	cd scripts && $(PY) fig1_label.py && $(PY) fig2.py && $(PY) fig3.py && $(PY) fig4.py \
 	  && $(PY) fig5.py && $(PY) fig6.py
 
 check:

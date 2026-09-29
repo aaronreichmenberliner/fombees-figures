@@ -11,3 +11,5 @@ data/sensitivity.json
 # which uses them to tell an axis tick from a data label. Build artefacts, not
 # source; regenerated whenever a figure is rendered.
 figures/*.ticks.json
+
+.DS_Store

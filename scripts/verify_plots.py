@@ -24,6 +24,10 @@ from read_esmbm import read
 
 NUM = re.compile(r"^-?[\d,]+(?:\.\d+)?(?:e-?\d+)?$")
 
+# Figures assembled from supplied artwork rather than rendered from the model.
+# fig1_label.py leaves the supplied artwork unmodified; only the labels are added.
+NO_DATA = {"Figure1_block_flow"}
+
 
 def candidates() -> list[float]:
     """Every quantity a figure is allowed to print."""
@@ -91,6 +95,9 @@ def run() -> list[str]:
     base = candidates()
     bad = []
     for pdf in sorted(figures_dir().glob("Figure*.pdf")):
+        if pdf.stem in NO_DATA:
+            print(f"  --  {pdf.name:<42} carries no model values; not checked")
+            continue
         toks = tokens(pdf)
         tick_file = pdf.with_suffix("").with_suffix(".ticks.json")
         if not tick_file.exists():
